@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: Wood_Item
   prefab: {fileID: 6590806880455969271, guid: 9195be687c8b775488ac50b5986a21ac, type: 3}
-  stackHeight: 0.26
+  stackHeight: 0.25
   icon: {fileID: 10911, guid: 0000000000000000f000000000000000, type: 0}

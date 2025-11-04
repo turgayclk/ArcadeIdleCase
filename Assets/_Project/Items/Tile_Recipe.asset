@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: Tile_Recipe
   m_EditorClassIdentifier: 
   inputItem: {fileID: 11400000, guid: 422f31baa0889664e9583817ad1c4753, type: 2}
-  outputItem: {fileID: 0}
-  processTime: 1.5
+  outputItem: {fileID: 11400000, guid: 7f117dfd4e60bcd449bc54d7be516836, type: 2}
+  processTime: 3
