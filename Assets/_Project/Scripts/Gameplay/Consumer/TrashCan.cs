@@ -1,9 +1,11 @@
 using UnityEngine;
+using DG.Tweening;
 
 public class TrashCan : MonoBehaviour
 {
-    [SerializeField] private float destroyInterval = 0.3f; // Item yok etme hýzý
-    [SerializeField] private ItemDefinition allowedItem;   // Sadece bu item yok edilebilir
+    [SerializeField] private float destroyInterval = 0.3f;  // Item yok etme hýzý
+    [SerializeField] private ItemDefinition allowedItem;    // Sadece bu item yok edilebilir
+    [SerializeField] private Transform trashPoint;          // Item’ýn çöpe uçacaðý nokta
 
     private bool isPlayerInside = false;
     private StackCarrier carrier;
@@ -34,23 +36,39 @@ public class TrashCan : MonoBehaviour
 
         if (carrier.Count > 0 && Time.time - lastDestroyTime >= destroyInterval)
         {
-            // Carrier’dan bakmadan item’ý çekmek yerine önce peek yapalým:
+            // Önce tepedeki item’a bakalým
             if (carrier.Peek(out var topItem))
             {
-                // Eðer item doðru türde deðilse yok etme
+                // Yanlýþ item ise yok etme
                 if (allowedItem != null && topItem.Definition != allowedItem)
-                {
-                    // Ýstersen burada “wrong item” feedback’i verebiliriz
                     return;
-                }
 
-                // Doðru item ? yok et
+                // Doðru item -> animasyonlu yok et
                 if (carrier.TryTake(out var item))
                 {
-                    item.ReturnToPool();
+                    AnimateTrash(item);
                     lastDestroyTime = Time.time;
                 }
             }
         }
+    }
+
+    private void AnimateTrash(ICarryable item)
+    {
+        Transform t = (item as Component).transform;
+
+        // Ebeveynlikten çýkar
+        t.SetParent(null);
+
+        Vector3 targetPos = trashPoint != null ? trashPoint.position : transform.position;
+
+        // 1) Çöpe doðru uç
+        t.DOMove(targetPos, 0.25f).SetEase(Ease.InQuad);
+
+        // 2) Küçülerek kaybol
+        t.DOScale(0f, 0.25f).SetEase(Ease.InBack).OnComplete(() =>
+        {
+            item.ReturnToPool();
+        });
     }
 }

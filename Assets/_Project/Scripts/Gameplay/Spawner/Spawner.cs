@@ -1,43 +1,32 @@
 using UnityEngine;
 using System.Collections;
+using DG.Tweening;
 
 public class Spawner : MonoBehaviour
 {
     [SerializeField] private ItemDefinition itemDefinition;
     [SerializeField] private StorageArea outputStorage;
     [SerializeField] private float interval = 0.5f;
+    [SerializeField] private Transform spawnPoint;
+
     private Coroutine spawnRoutine;
 
     private void OnEnable()
     {
-        // Null kontrolleri
-        if (itemDefinition == null)
-        {
-            Debug.LogError("ItemDefinition is not assigned!", this);
-            return;
-        }
-
-        if (outputStorage == null)
-        {
-            Debug.LogError("OutputStorage is not assigned!", this);
-            return;
-        }
+        if (itemDefinition == null) { Debug.LogError("ItemDefinition not assigned!", this); return; }
+        if (outputStorage == null) { Debug.LogError("OutputStorage not assigned!", this); return; }
 
         spawnRoutine = StartCoroutine(SpawnLoop());
     }
 
     private IEnumerator SpawnLoop()
     {
-        // PoolManager hazýr olana kadar bekle
         while (PoolManager.Instance == null)
-        {
             yield return null;
-        }
 
-        // Prefab kontrolü
         if (itemDefinition.prefab == null)
         {
-            Debug.LogError("itemDefinition.prefab is null!", this);
+            Debug.LogError("Prefab is null!", this);
             yield break;
         }
 
@@ -49,29 +38,41 @@ public class Spawner : MonoBehaviour
                 continue;
             }
 
-            var obj = PoolManager.Instance.Get(itemDefinition.prefab);
-
-            if (obj == null)
-            {
-                Debug.LogError("PoolManager returned null object!", this);
-                yield return new WaitForSeconds(interval);
-                continue;
-            }
-
+            GameObject obj = PoolManager.Instance.Get(itemDefinition.prefab);
             var pooledItem = obj.GetComponent<PooledItem>();
 
             if (pooledItem == null)
             {
-                Debug.LogError("Spawned object doesn't have PooledItem component!", this);
+                Debug.LogError("Missing PooledItem component!");
                 Destroy(obj);
                 yield return new WaitForSeconds(interval);
                 continue;
             }
 
-            if (!outputStorage.TryStore(pooledItem))
-            {
-                pooledItem.ReturnToPool();
-            }
+            // --- ? Animation Phase START ? ---
+            Transform t = obj.transform;
+
+            // spawn point varsa oraya koy, yoksa spawner'ýn konumunu kullan
+            Vector3 startPos = spawnPoint != null ? spawnPoint.position : transform.position;
+            t.position = startPos;
+            t.localScale = Vector3.zero; // küçük doðsun
+
+            // Storage’de yerleþeceði konumu hesaplatmak için önce geçici store yapmayacaðýz.
+            // Objeyi animasyonla anchor pozisyonuna götüreceðiz.
+
+            //Hoþ bir "pop" effect
+            t.DOScale(1f, 0.25f).SetEase(Ease.OutBack);
+
+            // output storage anchor pozisyonuna atlama (zýplayarak gitsin daha tatlý görünür)
+            Vector3 targetPos = outputStorage.GetNextFreeLocalPositionWorld();
+            t.DOMove(targetPos, 0.35f).SetEase(Ease.OutQuad);
+
+            yield return new WaitForSeconds(0.35f); // anim bitene kadar bekle
+
+            // Son olarak depoya ekle
+            outputStorage.TryStore(pooledItem);
+
+            // --- ? Animation Phase END ? ---
 
             yield return new WaitForSeconds(interval);
         }

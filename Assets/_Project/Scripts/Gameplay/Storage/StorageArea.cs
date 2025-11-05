@@ -102,6 +102,13 @@ public class StorageArea : MonoBehaviour, IStorage
         }
     }
 
+    public Vector3 GetNextFreeLocalPositionWorld()
+    {
+        float h = items.Count > 0 ? items[0].Definition.stackHeight : 0f;
+        Vector3 localPos = new Vector3(0, h * items.Count, 0);
+        return anchor.TransformPoint(localPos);
+    }
+
     // Getter method for isInputStorage
     public bool IsInputStorage() => isInputStorage;
 }

@@ -147,17 +147,33 @@ public class BasicAIWorker : MonoBehaviour
     {
         Vector3 dir = (targetPos - transform.position);
         dir.y = 0f;
+
         float dist = dir.magnitude;
-        if (dist <= stopDistance) return;
-
-        Vector3 step = dir.normalized * moveSpeed * Time.deltaTime;
-        transform.position += step;
-
-        if (step.sqrMagnitude > 0.0001f)
+        if (dist <= stopDistance)
         {
-            Quaternion targetRot = Quaternion.LookRotation(step);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, rotationSpeed * Time.deltaTime);
+            // Durduðu anda bile hedefe bakmaya devam etsin
+            RotateTowards(dir);
+            return;
         }
+
+        // Hareket
+        Vector3 moveDir = dir.normalized;
+        transform.position += moveDir * moveSpeed * Time.deltaTime;
+
+        // Dönüþ
+        RotateTowards(moveDir);
+    }
+
+    private void RotateTowards(Vector3 direction)
+    {
+        if (direction.sqrMagnitude < 0.001f) return;
+
+        Quaternion targetRot = Quaternion.LookRotation(direction);
+        transform.rotation = Quaternion.Slerp(
+            transform.rotation,
+            targetRot,
+            rotationSpeed * Time.deltaTime
+        );
     }
 
     private bool Reached(Vector3 targetPos)
