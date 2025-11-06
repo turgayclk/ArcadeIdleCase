@@ -10,9 +10,11 @@ The goal of this case is to demonstrate **core gameplay mechanics**, **clean cod
 
 Screenshots showcasing the key moments of the gameplay loop. The images are linked using local relative paths:
 
-![](Assets/Screenshots/ss_1.jpg)
-![](Assets/Screenshots/ss_2.jpg)
-![](Assets/Screenshots/ss_3.jpg)
+<p align="center">
+  <img src="Assets/Screenshots/ss_1.jpg" width="300" />
+  <img src="Assets/Screenshots/ss_2.jpg" width="300" />
+  <img src="Assets/Screenshots/ss_3.jpg" width="300" />
+</p>
 
 ---
 
