@@ -4,17 +4,23 @@ public class BasicAIWorker : MonoBehaviour
 {
     private enum State
     {
-        GoToSource,     // Spawner_Storage noktasýna yürü
-        PickFromSource, // Depodan yavaþ yavaþ al
+        GoToSource,     // Spawner_Storage noktasýna yürü (Wood toplama)
+        PickFromSource, // Wood al
         GoToInput,      // Transformer_Input_Storage noktasýna yürü
-        DropToInput,    // Depoya yavaþ yavaþ býrak
-        IdleWait        // Bekle (boþsa veya doluysa)
+        DropToInput,    // Wood býrak
+        GoToOutput,     // NEW: Output storage'a yürü (Tile toplamak için)
+        PickFromOutput, // NEW: Tile al
+        GoToTrash,      // NEW: Çöp kutusuna yürü
+        DropToTrash,    // NEW: Tile yok et
+        IdleWait        // Bekle
     }
 
     [Header("References")]
-    [SerializeField] private StackCarrier carrier;        // AI’nýn çantasý
-    [SerializeField] private StorageArea sourceStorage;   // Spawner_Storage (çýkan ham ürünler)
-    [SerializeField] private StorageArea inputStorage;    // Transformer_Input_Storage (ham ürün giriþi)
+    [SerializeField] private StackCarrier carrier;
+    [SerializeField] private StorageArea sourceStorage;   // Wood Spawner Storage
+    [SerializeField] private StorageArea inputStorage;    // Wood Input Storage
+    [SerializeField] private StorageArea outputStorage;   // NEW: Tile Output Storage
+    [SerializeField] private Transform trashPoint;        // NEW: Trash hedef noktasý (TrashCan önüne)
 
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 3f;
@@ -22,9 +28,9 @@ public class BasicAIWorker : MonoBehaviour
     [SerializeField] private float stopDistance = 0.75f;
 
     [Header("Behaviour")]
-    [SerializeField] private float actionInterval = 0.25f; // Al / býrak tick süresi
-    [SerializeField] private int batchAmount = 1;          // Her tikte kaç item
-    [SerializeField] private float idleRetryDelay = 0.75f; // Beklerken ne sýklýkla denesin
+    [SerializeField] private float actionInterval = 0.25f;
+    [SerializeField] private int batchAmount = 1;
+    [SerializeField] private float idleRetryDelay = 0.75f;
 
     private State state;
     private float _lastActionTime;
@@ -43,6 +49,15 @@ public class BasicAIWorker : MonoBehaviour
 
     private void Update()
     {
+        // ? Öncelik: Eðer Output Storage doluysa ? önce Tile temizle
+        if (state == State.GoToSource || state == State.IdleWait)
+        {
+            if (outputStorage != null && outputStorage.Count > 0 && carrier.Count == 0)
+            {
+                state = State.GoToOutput;
+            }
+        }
+
         switch (state)
         {
             case State.GoToSource:
@@ -52,32 +67,24 @@ public class BasicAIWorker : MonoBehaviour
                 break;
 
             case State.PickFromSource:
-                // Kaynak boþsa ve elimiz de boþsa: bekle
                 if (sourceStorage.Count == 0 && carrier.Count == 0)
                 {
                     IdleNear(sourceStorage.transform.position);
                     break;
                 }
 
-                // Çanta dolduysa hedefe
                 if (carrier.Count >= carrier.Capacity)
                 {
                     state = State.GoToInput;
                     break;
                 }
 
-                // Aksiyon aralýðý
                 if (Time.time - _lastActionTime >= actionInterval)
                 {
-                    // Depoda varsa al, yoksa kýsa bekle
                     bool picked = carrier.TryPickupFrom(sourceStorage, batchAmount);
                     _lastActionTime = Time.time;
 
-                    if (!picked)
-                    {
-                        // Kaynak tamamen boþsa biraz bekleyip yine deneriz
-                        IdleNear(sourceStorage.transform.position);
-                    }
+                    if (!picked) IdleNear(sourceStorage.transform.position);
                 }
                 break;
 
@@ -88,14 +95,12 @@ public class BasicAIWorker : MonoBehaviour
                 break;
 
             case State.DropToInput:
-                // Input depo dolu ve elimizde item var -> bekle
                 if (inputStorage.Count >= inputStorage.Capacity && carrier.Count > 0)
                 {
                     IdleNear(inputStorage.transform.position);
                     break;
                 }
 
-                // Çantamýz boþaldýysa tekrar kaynaða
                 if (carrier.Count == 0)
                 {
                     state = State.GoToSource;
@@ -107,29 +112,64 @@ public class BasicAIWorker : MonoBehaviour
                     bool dropped = carrier.TryDropTo(inputStorage, batchAmount);
                     _lastActionTime = Time.time;
 
-                    if (!dropped)
-                    {
-                        // input doluysa / alamýyorsa burada kýsa bekle
-                        IdleNear(inputStorage.transform.position);
-                    }
+                    if (!dropped) IdleNear(inputStorage.transform.position);
                 }
                 break;
+
+            /* ---------------- NEW TILE CLEAN-UP LOGIC ---------------- */
+
+            case State.GoToOutput:
+                MoveTowards(outputStorage.transform.position);
+                if (Reached(outputStorage.transform.position))
+                    state = State.PickFromOutput;
+                break;
+
+            case State.PickFromOutput:
+                if (carrier.Count >= carrier.Capacity || outputStorage.Count == 0)
+                {
+                    state = State.GoToTrash;
+                    break;
+                }
+
+                if (Time.time - _lastActionTime >= actionInterval)
+                {
+                    bool picked = carrier.TryPickupFrom(outputStorage, batchAmount);
+                    _lastActionTime = Time.time;
+
+                    if (!picked) state = State.GoToTrash;
+                }
+                break;
+
+            case State.GoToTrash:
+                MoveTowards(trashPoint.position);
+                if (Reached(trashPoint.position))
+                    state = State.DropToTrash;
+                break;
+
+            case State.DropToTrash:
+                if (carrier.Count == 0)
+                {
+                    state = State.GoToSource;
+                    break;
+                }
+
+                if (Time.time - _lastActionTime >= actionInterval)
+                {
+                    if (carrier.TryTake(out var item))
+                        item.ReturnToPool(); // ?? yok et
+
+                    _lastActionTime = Time.time;
+                }
+                break;
+
+            /* ----------------------------------------------------------- */
 
             case State.IdleWait:
                 if (Time.time - _lastIdlePing >= idleRetryDelay)
                 {
                     _lastIdlePing = Time.time;
-                    // Mantýklý bir sonraki state’e dön
-                    if (carrier.Count == 0)
-                    {
-                        // Eþya yoksa önce kaynaða
-                        state = State.GoToSource;
-                    }
-                    else
-                    {
-                        // Üzerimiz doluysa input’a
-                        state = State.GoToInput;
-                    }
+                    if (carrier.Count == 0) state = State.GoToSource;
+                    else state = State.GoToInput;
                 }
                 break;
         }
@@ -137,7 +177,6 @@ public class BasicAIWorker : MonoBehaviour
 
     private void IdleNear(Vector3 pos)
     {
-        // Noktaya çok uzak deðilsek orada oyalan; uzaksa yaklaþ
         if (!Reached(pos))
             MoveTowards(pos);
         state = State.IdleWait;
@@ -151,16 +190,12 @@ public class BasicAIWorker : MonoBehaviour
         float dist = dir.magnitude;
         if (dist <= stopDistance)
         {
-            // Durduðu anda bile hedefe bakmaya devam etsin
             RotateTowards(dir);
             return;
         }
 
-        // Hareket
         Vector3 moveDir = dir.normalized;
         transform.position += moveDir * moveSpeed * Time.deltaTime;
-
-        // Dönüþ
         RotateTowards(moveDir);
     }
 
@@ -182,20 +217,4 @@ public class BasicAIWorker : MonoBehaviour
         targetPos.y = 0f;
         return Vector3.Distance(flat, targetPos) <= stopDistance;
     }
-
-#if UNITY_EDITOR
-    private void OnDrawGizmosSelected()
-    {
-        if (sourceStorage != null)
-        {
-            Gizmos.color = Color.green;
-            Gizmos.DrawWireSphere(sourceStorage.transform.position, 0.3f);
-        }
-        if (inputStorage != null)
-        {
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawWireSphere(inputStorage.transform.position, 0.3f);
-        }
-    }
-#endif
 }

@@ -1512,7 +1512,7 @@ Transform:
   m_GameObject: {fileID: 543669175}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.62, y: 0.58, z: 4.34}
+  m_LocalPosition: {x: -4.16, y: 0.58, z: -3.64}
   m_LocalScale: {x: 2, y: 1, z: 2}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -5093,7 +5093,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!1 &950778532830085080
 GameObject:
   m_ObjectHideFlags: 0
@@ -6212,6 +6212,8 @@ MonoBehaviour:
   carrier: {fileID: 5866666019950800706}
   sourceStorage: {fileID: 1193200387}
   inputStorage: {fileID: 1777044287}
+  outputStorage: {fileID: 913554712}
+  trashPoint: {fileID: 186524858}
   moveSpeed: 2.5
   rotationSpeed: 10
   stopDistance: 1
@@ -6717,8 +6719,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   carrier: {fileID: 6851278998637125508}
-  pickupCooldown: 0.5
-  lastPickupTime: 0
+  pickupCooldown: 0.2
 --- !u!4 &6893018487774310883
 Transform:
   m_ObjectHideFlags: 0
