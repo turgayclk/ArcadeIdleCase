@@ -1,5 +1,9 @@
 # 📱 Idle Arcade Case Project
 
+[![Play Now](https://img.shields.io/badge/PLAY_NOW_ON_UNITY_PLAY-241f5705?style=for-the-badge&logo=unity&logoColor=white&color=00B4CC)](https://play.unity.com/en/games/241f5705-a9ba-4b06-823a-bb74e2b9f89c/arcade-idle-game)
+
+> **Click the link above** to instantly try out the game in your browser via **Unity Play**!
+
 This project was developed as a **Mobile Idle Arcade Case Study** for **Noko Games**.
 
 The goal of this case is to demonstrate **core gameplay mechanics**, **clean code structure**, and a **scalable architecture** suitable for casual/idle mobile games.
@@ -45,5 +49,3 @@ The primary workflow of the game follows this sequence:
 | **Renderer** | Universal Render Pipeline (URP) |
 | **Language** | C# (with Interface-based architecture) |
 | **Extra Techniques** | Object Pooling |
-
----
