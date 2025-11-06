@@ -15,57 +15,53 @@ public class StorageArea : MonoBehaviour, IStorage
     public int Capacity => capacity;
     public int Count => items.Count;
 
-    public bool CanAccept(ICarryable item) => Count < Capacity;
+    public bool CanAccept(ICarryable item)
+    {
+        // Kapasite kontrolü
+        if (Count >= Capacity) return false;
+
+        // Input Storage ise tip kontrolü
+        if (isInputStorage && allowedItem != null)
+        {
+            return item.Definition == allowedItem;
+        }
+
+        return true;
+    }
 
     // Bu fonksiyonu güncelledik. inputStorage'da item koyma iþlemi sadece burada yapýlacak.
     public bool TryStore(ICarryable item)
     {
-        Debug.Log($"TryStore called. IsInputStorage: {isInputStorage}, item: {item}");
+        if (item == null) return false;
 
-        if (item == null)
-        {
-            Debug.LogWarning("Item is null, cannot store!");
-            return false;
-        }
-
-        // Eðer bu Input Storage ise ve allowedItem tanýmlandýysa, filtre uygula
+        // Input Storage filtresi
         if (isInputStorage)
         {
             if (allowedItem != null && item.Definition != allowedItem)
             {
-                Debug.LogWarning($"InputStorage rejected item {item.Definition.name}. Allowed only: {allowedItem.name}");
+                #if UNITY_EDITOR
+                Debug.LogWarning($"InputStorage rejected: {item.Definition.name}. Allowed: {allowedItem.name}");
+                #endif
                 return false;
             }
 
-            if (items.Count >= capacity)
-            {
-                Debug.LogWarning("InputStorage full!");
-                return false;
-            }
+            if (items.Count >= capacity) return false;
 
             items.Add(item);
             LayoutItems();
-            Debug.Log("Item stored in INPUT storage.");
             return true;
         }
 
-        // Normal depolar için standart mantýk
-        if (CanAccept(item))
-        {
-            items.Add(item);
-            LayoutItems();
-            Debug.Log("Item stored in regular storage.");
-            return true;
-        }
+        // Normal storage
+        if (!CanAccept(item)) return false;
 
-        Debug.LogWarning("Storage FULL!");
-        return false;
+        items.Add(item);
+        LayoutItems();
+        return true;
     }
 
     public bool TryTake(out ICarryable item)
     {
-        Debug.Log("TryTake called.");
-
         if (items.Count == 0)
         {
             item = null;
@@ -78,22 +74,16 @@ public class StorageArea : MonoBehaviour, IStorage
         items.RemoveAt(index);
 
         LayoutItems();
-        Debug.Log($"Item taken: {item}. Remaining items: {items.Count}");
         return true;
     }
 
     private void LayoutItems()
     {
-        Debug.Log($"LayoutItems called. Total items: {items.Count}");
-
         float h = items.Count > 0 ? items[0].Definition.stackHeight : 0f;
 
         for (int i = 0; i < items.Count; i++)
         {
             var tr = (items[i] as Component).transform;
-
-            // Log the position of each item being laid out
-            Debug.Log($"Item {i} positioned at {tr.position}");
 
             tr.SetParent(anchor);
             tr.localPosition = new Vector3(0, h * i, 0);

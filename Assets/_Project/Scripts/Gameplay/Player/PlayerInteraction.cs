@@ -3,18 +3,18 @@ using UnityEngine;
 public class PlayerInteraction : MonoBehaviour
 {
     [SerializeField] private StackCarrier carrier;
-    private IStorage currentStorage;
-    private bool isInStorageArea = false;  // Depo alanýnda olup olmadýðýný kontrol etmek için
+    [SerializeField] private float pickupCooldown = 0.2f;
 
-    [SerializeField] private float pickupCooldown = 0.5f;  // Item almak için bekleme süresi
-    [SerializeField] private float lastPickupTime = 0f;    // Son alým zamaný
+    private IStorage currentStorage;
+    private bool isInStorageArea = false;
+    private float lastPickupTime = 0f;
 
     private void OnTriggerEnter(Collider other)
     {
         if (other.TryGetComponent<IStorage>(out var storage))
         {
             currentStorage = storage;
-            isInStorageArea = true;  // Depo alanýna girdi
+            isInStorageArea = true;
         }
     }
 
@@ -25,7 +25,7 @@ public class PlayerInteraction : MonoBehaviour
             if (currentStorage == storage)
             {
                 currentStorage = null;
-                isInStorageArea = false;  // Depo alanýndan çýkýldý
+                isInStorageArea = false;
             }
         }
     }
@@ -35,26 +35,27 @@ public class PlayerInteraction : MonoBehaviour
         if (currentStorage == null || !isInStorageArea)
             return;
 
+        if (Time.time - lastPickupTime < pickupCooldown)
+            return;
+
         bool isInputStorage = currentStorage is StorageArea sa && sa.IsInputStorage();
 
-        // INPUT STORAGE ? BIRAK
+        // INPUT STORAGE: Item býrak
         if (isInputStorage)
         {
-            if (carrier.Count > 0 && Time.time - lastPickupTime >= pickupCooldown)
+            if (carrier.Count > 0)
             {
-                if (carrier.TryTake(out var item))
+                // TryDropTo kullan - daha güvenli
+                if (carrier.TryDropTo(currentStorage, 1))
                 {
-                    if (currentStorage.TryStore(item))
-                    {
-                        lastPickupTime = Time.time;
-                    }
+                    lastPickupTime = Time.time;
                 }
             }
-            return; // input ise aþaðýya hiç inmesin
+            return;
         }
 
-        // OUTPUT / NORMAL STORAGE ? AL
-        if (carrier.Count < carrier.Capacity && Time.time - lastPickupTime >= pickupCooldown)
+        // NORMAL/OUTPUT STORAGE: Item topla
+        if (carrier.Count < carrier.Capacity)
         {
             if (carrier.TryPickupFrom(currentStorage, 1))
             {
@@ -62,5 +63,4 @@ public class PlayerInteraction : MonoBehaviour
             }
         }
     }
-
 }
