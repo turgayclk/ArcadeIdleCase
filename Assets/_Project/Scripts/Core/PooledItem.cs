@@ -6,10 +6,19 @@ public class PooledItem : MonoBehaviour, ICarryable
     public ItemDefinition Definition => definition;
 
     private Transform _tr;
+    private GameObject prefabReference; // Bu obje hangi prefabýn havuzuna dönecek?
 
     private void Awake()
     {
         _tr = transform;
+    }
+
+    /// <summary>
+    /// PoolManager tarafýndan spawn edilirken atanmalý
+    /// </summary>
+    public void SetPrefabReference(GameObject prefab)
+    {
+        prefabReference = prefab;
     }
 
     public void SetCarrierTransform(Transform parent, Vector3 localPos)
@@ -23,6 +32,17 @@ public class PooledItem : MonoBehaviour, ICarryable
     public void ReturnToPool()
     {
         _tr.SetParent(null);
-        gameObject.SetActive(false);
+
+        if (prefabReference != null)
+        {
+            // PoolManager’a geri gönder
+            PoolManager.Instance.Release(prefabReference, gameObject);
+        }
+        else
+        {
+            // Güvenlik önlemi – referans yoksa fallback
+            gameObject.SetActive(false);
+            Debug.LogWarning($"{name} returned to pool WITHOUT prefab reference! Assign SetPrefabReference() when spawning.");
+        }
     }
 }

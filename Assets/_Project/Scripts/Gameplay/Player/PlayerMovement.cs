@@ -13,6 +13,9 @@ public class PlayerMovement : MonoBehaviour
     [Header("Animation")]
     public Animator animator;
 
+    [Header("VFX")]
+    public ParticleSystem runParticle;
+
     private CharacterController controller;
 
     private void Awake()
@@ -26,20 +29,35 @@ public class PlayerMovement : MonoBehaviour
         float v = joystick.Vertical;
 
         Vector3 inputDir = new Vector3(h, 0, v).normalized;
-
-        // **Speed deðerini animatöre gönder**
         float speed = inputDir.magnitude;
+
+        // ?? ANIMATION
         if (animator != null)
             animator.SetFloat("Speed", speed);
 
-        // Hareket
+        // ?? PARTICLE PLAY / STOP
+        HandleRunParticle(speed);
+
+        // ?? MOVEMENT + ROTATION
         if (speed > 0.1f)
         {
             controller.Move(inputDir * moveSpeed * Time.deltaTime);
 
-            // Karakter yönünü çevir
             Quaternion targetRot = Quaternion.LookRotation(inputDir);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, rotationSpeed * Time.deltaTime);
         }
+    }
+
+    private void HandleRunParticle(float speed)
+    {
+        if (runParticle == null) return;
+
+        bool shouldPlay = speed > 0.1f;
+
+        if (shouldPlay && !runParticle.isPlaying)
+            runParticle.Play();
+
+        if (!shouldPlay && runParticle.isPlaying)
+            runParticle.Stop();
     }
 }

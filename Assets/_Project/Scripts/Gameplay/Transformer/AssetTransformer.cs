@@ -10,13 +10,13 @@ public class AssetTransformer : MonoBehaviour
 
     [Header("Recipe")]
     [SerializeField] private TransformerRecipe recipe;
-    [SerializeField] private int parallel = 1;  // Ayný anda kaç dönüþüm yapýlacaðý
+    [SerializeField] private int parallel = 1;  // Ayný anda kaç dönüþüm olabilir
 
     [Header("Animation Points")]
-    [SerializeField] private Transform inputSpawnPoint;   // Ýþleme alýnmadan item buraya gelecek
-    [SerializeField] private Transform outputSpawnPoint;  // Ýþlemden çýkan item önce burada doðacak
+    [SerializeField] private Transform inputSpawnPoint;   // Ýþleme alýnmadan önce gelecek yer
+    [SerializeField] private Transform outputSpawnPoint;  // Output item'ýn doðacaðý yer
 
-    private int _processing;  // Þu an kaç item iþleniyor
+    private int _processing;
 
     private void Update()
     {
@@ -42,55 +42,52 @@ public class AssetTransformer : MonoBehaviour
             yield break;
         }
 
-        // Component'i al
-        Transform itemTransform = (consumed as Component).transform;
+        Transform itemTr = (consumed as Component).transform;
 
-        // 1?? INPUT ? Ýþleme Noktasýna Animasyon
-        itemTransform.SetParent(null);
-        Vector3 targetPos = inputSpawnPoint != null ? inputSpawnPoint.position : transform.position;
+        // --- INPUT -> Ýþleme Noktasýna Animasyon ---
+        itemTr.SetParent(null);
+        Vector3 processPos = inputSpawnPoint != null ? inputSpawnPoint.position : transform.position;
 
-        itemTransform.DOMove(targetPos, 0.35f).SetEase(Ease.OutQuad);
-        itemTransform.DOScale(1.1f, 0.25f).SetLoops(2, LoopType.Yoyo);
+        itemTr.DOMove(processPos, 0.35f).SetEase(Ease.OutQuad);
+        itemTr.DOScale(1.1f, 0.25f).SetLoops(2, LoopType.Yoyo);
 
         yield return new WaitForSeconds(0.4f);
 
-        // 2?? Ýþleme Efekti: Kaybolma
-        itemTransform.DOScale(0f, 0.3f).SetEase(Ease.InBack);
+        // --- Kaybolma (ReturnToPool Öncesi) ---
+        itemTr.DOScale(0f, 0.25f).SetEase(Ease.InBack);
+        yield return new WaitForSeconds(0.25f);
 
-        // Tam kaybolmasýný bekle
-        yield return new WaitForSeconds(0.3f);
+        consumed.ReturnToPool(); // Artýk havuza döndü
 
-        // Input item'ý yok et (havuzuna yolla)
-        consumed.ReturnToPool();
-
-        // 3?? Üretim Süresi (piþiyor)
+        // --- Üretim Süresi ---
         yield return new WaitForSeconds(recipe.processTime);
 
-        // 4?? ÇIKTI ITEM ? Doðsun
-        var go = PoolManager.Instance.Get(recipe.outputItem.prefab);
+        // --- OUTPUT ITEM Spawn ---
+        GameObject go = PoolManager.Instance.Get(recipe.outputItem.prefab);
         if (go == null)
         {
-            Debug.LogError("Output prefab is null, cannot spawn output item.");
+            Debug.LogError("Output prefab is null!");
             yield break;
         }
 
         var newItem = go.GetComponent<PooledItem>();
-        Transform t = go.transform;
+        newItem.SetPrefabReference(recipe.outputItem.prefab);
 
-        // Output spawn noktasýnda minicik belsin
-        t.position = outputSpawnPoint != null ? outputSpawnPoint.position : transform.position;
-        t.localScale = Vector3.zero;
-        t.DOScale(1f, 0.25f).SetEase(Ease.OutBack);
+        Transform newTr = go.transform;
+        newTr.position = outputSpawnPoint != null ? outputSpawnPoint.position : transform.position;
+        newTr.localScale = Vector3.zero;
 
-        // 5?? OUTPUT ? Output Storage Stack pozisyonuna uçsun
+        // pop anim
+        newTr.DOScale(1f, 0.25f).SetEase(Ease.OutBack);
         yield return new WaitForSeconds(0.25f);
 
-        Vector3 stackPos = outputStorage.GetNextFreeLocalPositionWorld();
-        t.DOMove(stackPos, 0.35f).SetEase(Ease.OutQuad);
+        // Output Storage pozisyonuna uçuþ
+        Vector3 targetPos = outputStorage.GetNextFreeLocalPositionWorld();
+        newTr.DOMove(targetPos, 0.35f).SetEase(Ease.OutQuad);
 
         yield return new WaitForSeconds(0.35f);
 
-        // Son olarak depoya ekle
+        // Depoya koy
         outputStorage.TryStore(newItem);
 
         _processing--;

@@ -8,6 +8,7 @@ public class Spawner : MonoBehaviour
     [SerializeField] private StorageArea outputStorage;
     [SerializeField] private float interval = 0.5f;
     [SerializeField] private Transform spawnPoint;
+    [SerializeField] private float animDuration = 0.5f;
 
     private Coroutine spawnRoutine;
 
@@ -32,13 +33,24 @@ public class Spawner : MonoBehaviour
 
         while (true)
         {
+            // Depo doluysa bekle
             if (outputStorage.Count >= outputStorage.Capacity)
             {
                 yield return null;
                 continue;
             }
 
+            // Havuzdan obje çek
             GameObject obj = PoolManager.Instance.Get(itemDefinition.prefab);
+
+            // Havuzda yok ? bekle, tekrar dene
+            if (obj == null)
+            {
+                // Debug.Log("No pooled item available, waiting...");
+                yield return null;
+                continue;
+            }
+
             var pooledItem = obj.GetComponent<PooledItem>();
 
             if (pooledItem == null)
@@ -49,32 +61,27 @@ public class Spawner : MonoBehaviour
                 continue;
             }
 
-            // --- ? Animation Phase START ? ---
+            pooledItem.SetPrefabReference(itemDefinition.prefab);
+
+            // --- ANÝMASYON ---
             Transform t = obj.transform;
 
-            // spawn point varsa oraya koy, yoksa spawner'ýn konumunu kullan
             Vector3 startPos = spawnPoint != null ? spawnPoint.position : transform.position;
             t.position = startPos;
-            t.localScale = Vector3.zero; // küçük doðsun
+            t.localScale = Vector3.zero;
 
-            // Storage’de yerleþeceði konumu hesaplatmak için önce geçici store yapmayacaðýz.
-            // Objeyi animasyonla anchor pozisyonuna götüreceðiz.
-
-            //Hoþ bir "pop" effect
             t.DOScale(1f, 0.25f).SetEase(Ease.OutBack);
 
-            // output storage anchor pozisyonuna atlama (zýplayarak gitsin daha tatlý görünür)
             Vector3 targetPos = outputStorage.GetNextFreeLocalPositionWorld();
-            t.DOMove(targetPos, 0.35f).SetEase(Ease.OutQuad);
+            t.DOMove(targetPos, animDuration).SetEase(Ease.OutQuad);
 
-            yield return new WaitForSeconds(0.35f); // anim bitene kadar bekle
+            yield return new WaitForSeconds(animDuration);
 
-            // Son olarak depoya ekle
             outputStorage.TryStore(pooledItem);
-
-            // --- ? Animation Phase END ? ---
 
             yield return new WaitForSeconds(interval);
         }
     }
+
+
 }
